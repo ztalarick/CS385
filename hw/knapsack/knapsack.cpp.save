@@ -1,0 +1,232 @@
+//Zachary Talarick
+//I pledge my honor that I have abided by the Stevens Honor System.
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>	
+#include <vector>
+#include <climits>
+#include <bits/stdc++.h> 
+
+using namespace std;
+
+struct Item{
+	unsigned int item_number, weight, value;
+	string description;
+	double ratio;
+	
+	explicit Item(const unsigned int item_number,
+			const unsigned int weight,
+			const unsigned int value,
+			const string &description) :
+				item_number(item_number),
+				weight(weight),
+				value(value),
+				description(description) { ratio = value / weight;}
+	friend std::ostream& operator<<(std::ostream& os, const Item &item) {
+		os << "Item " << item.item_number << ": " << item.description
+			<< " (" << item.weight
+			<< (item.weight == 1 ? " pound" : " pounds") << ", $"
+			<< item.value << ")";
+		os.flush();
+		return os;
+	}
+};
+
+bool order(Item item1, Item item2){
+	return item1.item_number < item2.item_number;
+}
+
+bool compareItem(Item item1, Item item2){
+	return item1.ratio < item2.ratio;
+}
+
+vector<Item> knapsack(vector<Item> items, unsigned int cap){
+	int size = items.size();
+	vector<Item> result;
+	sort(items.begin(), items.end(), compareItem);
+	
+	unsigned int count = 0;
+	int i = size - 1;		
+	while(count < cap && i >= 0){
+		if(count + items[i].weight < cap){
+			count += items[i].weight;
+			result.push_back(items[i]);
+		}
+		i--;
+	}	
+	
+	return result;
+}
+
+int max(int a, int b) { return (a > b)? a : b; } 
+
+vector<Item> knapsack2(vector<Item> items, unsigned int cap){
+	unsigned int size = items.size();
+
+	//int result[size + 1][cap + 1];
+	int **result = new int * [size + 1];
+ 	for(unsigned int it = 0; it < size + 1; it++){
+		result[it] = new int[cap + 1];
+		//for(unsigned int it2 = 0; it2 < cap + 1; it2++){
+		//	result[it][it2] = 0;
+		//}
+	}
+
+	
+
+	for(unsigned int i = 0; i <= size; i++){
+		for(unsigned int j = 0; j <= cap; j++){
+			if(i == 0 || j == 0){
+				result[i][j] = 0;
+				cout << j;
+			}else if(items[i - 1].weight <= j){
+				result[i][j] = max(items[i - 1].value + result[i - 1][j - items[i - 1].weight], result[i - 1][j]);
+			}else{
+				result[i][j] = result[i - 1][j];
+			}
+		}
+	}
+
+	vector<Item> resultItems;
+	int currCap = cap;
+	int curr = size;
+	while(currCap > 0 && curr > 0){
+		if(result[curr][currCap] != result[curr - 1][currCap]){
+			resultItems.push_back(items[curr]);
+			currCap = currCap - items[curr].weight;
+			curr -= 1;
+		}else{
+			curr -=1;
+		}
+	}
+	
+	return resultItems;	
+}
+
+				
+
+int main(int argc, char* argv[]){
+	if(argc != 3){
+		cerr << "Usage: ./knapsack <capacity> <filename>" << endl;
+		return -1;
+	}
+	unsigned int CAP;
+	istringstream iss;
+	iss.str(argv[1]);
+	 
+	if(!(iss >> CAP) || CAP < 0){
+		cerr << "Error: Bad value '" << argv[1] << "' for capacity." << endl;
+		return -1;
+	}
+	iss.clear();
+	ifstream inFile;
+	inFile.open(argv[2]); //open input file
+	if(!inFile){
+		cerr << "Error: Cannot open file '" << argv[2] << "'." << endl;
+		return -1;
+	}
+	
+	string line, inputName, inputWeight, inputVal;
+	int lineNum = 1;
+	vector<Item> items;
+	int weight, val;
+	
+	while(getline(inFile, line)){
+		if(line.find(",") > line.size()){
+			cerr << "Error: Line number " << lineNum << " does not contain 3 fields." << endl;
+			return -1;
+		}
+		inputName = line.substr(0, line.find(","));
+
+		line = line.substr(line.find(",") + 1);
+		if(line.find(",") > line.size()){
+			cerr << "Error: Line number " << lineNum << " does not contain 3 fields." << endl;
+			return -1;
+		}
+		inputWeight = line.substr(0, line.find(","));
+
+		line = line.substr(line.find(",") + 1);
+		if(line.find(",") < INT_MAX){
+			cerr << "Error: Line number " << lineNum << " does not contain 3 fields." << endl;
+			return -1;
+		}
+
+		inputVal = line;
+		
+		iss.str(inputWeight);
+		
+		if(!(iss >> weight) || weight < 0){
+			cerr << "Error: Invalid weight '" << inputWeight << "' on line number " << lineNum << "." << endl;
+			return -1;
+		}
+		iss.clear();
+
+		iss.str(inputVal);
+		
+		if(!(iss >> val) || val < 0){
+			cerr << "Error: Invalid value '" << inputVal << "' on line number " << lineNum << "." << endl;
+			return -1;
+		}
+		iss.clear();
+
+		Item item(lineNum, weight, val, inputName);
+		items.push_back(item);
+
+		lineNum++;
+	}
+	inFile.close();	
+	
+	cout << "Candidate items to place in knapsack:" << endl;
+	for(unsigned int i = 0; i < items.size(); i++){
+		cout << "   " << "Item " << items[i].item_number << ": " << items[i].description << " (" << items[i].weight;
+		if(items[i].weight == 1){
+			cout << " pound, $";
+		}else{
+			cout << " pounds, $";
+		}
+		cout << items[i].value << ")" << endl;
+	}
+	
+	cout << "Capacity: " << CAP;
+	if(CAP == 1){
+		cout << " pound" << endl;
+	}else{
+		cout << " pounds" << endl;
+	}
+	
+	
+	
+	vector<Item> result = knapsack2(items, CAP);
+	if(result.empty()){
+		cout << "Items to place in knapsack: None" << endl;
+		cout << "Total weight: 0 pounds" << endl;
+		cout << "Total value : $0" << endl;
+		
+	}else{
+		int totalWeight = 0;
+		int totalValue = 0;
+		cout << "Items to place in knapsack:" << endl;
+		//sort(result.begin(), result.end(), order); 	
+		for(unsigned int i = 0; i < result.size(); i++){
+			cout << "   " << "Item " << result[i].item_number << ": " << result[i].description << " (" << result[i].weight;
+			totalWeight += result[i].weight;
+			totalValue += result[i].value;
+			if(result[i].weight == 1){
+				cout << " pound, $";
+			}else{
+				cout << " pounds, $";
+			}
+			cout << result[i].value << ")" << endl;
+		}	
+		cout << "Total weight: "<< totalWeight;
+		if(totalWeight == 1){
+			cout << " pound" << endl;
+		}else{
+			cout << " pounds" << endl;
+		}
+		cout << "Total value : $" << totalValue << endl; 
+	}
+	return 0;
+}
